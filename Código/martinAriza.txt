@@ -1,0 +1,85 @@
+ORG 1000H ;DATOS
+Numeros DB 21,45,64,89  ;solicitado por enunciado
+Inversiones DB 0,0,0,0  ;tabla de inversiones
+Resultado DB ?          ;mayores que 50
+
+
+ORG 3000H ;RUTINA
+; En AL dejo un número "N" (por valor y registro)
+; En BX dejo el parámetro (por referencia y registro)
+
+INVERT: PUSH DX 
+PUSH CX 
+PUSH BX 
+PUSH AX
+;como se alteran casi todos los registros en mi subrutina,
+;si quiero llevar mi rutina a otro programa debo push por reuso
+;y no alterar el contexto del que vengo 
+
+
+
+MOV BX,DX ;Recupero en BX la dirección enviada enviada por referencia y registro
+
+MOV AL,AH ;Dejo una copia en el registro AH de "N"
+MOD: SUB AL,10 ;descompongo el número
+CMP AL,10
+JNC MOD
+
+MOV DL,0 ;Multiplico el resultado por 10
+MOV DH,10
+MULT: ADD DL,AL
+DEC DH
+JNZ MULT
+
+MOV CH,DL ;guardo el resultado MOD * 10 EN CH
+
+MOV DH,0
+DIV: SUB AH,10
+INC DH
+CMP AH,10
+JNS DIV
+
+MOV CL,DH ;guardo el DIV en CL
+
+ADD CH,CL ;SUMO mod*10 + DIV
+
+finR: MOV [BX],CH ;guardo en el parámetro enviado por referencia y registro
+POP AX ;desapilo para recuperar el contexto del que vengo y ¡vaciar la pila!
+POP BX
+POP CX 
+POP DX
+RET
+
+
+
+ORG 2000H ;PROGRAMA
+MOV BX,OFFSET Numeros
+MOV DX,OFFSET Inversiones ;guardo en DX el offset inversiones para enviar a subrurina por registro y referencia
+MOV CH,OFFSET Resultado - OFFSET Inversiones ;iteraciones
+MOV CL,0 ;servirá para sumatoria de valores cumplen una vez invertidos
+
+repetir: CMP CH,0
+JZ fin
+
+MOV AH,[BX] ;Guardo en AH numero (por registro y valor)
+CALL INVERT
+
+PUSH BX ;guardo en pila el valor de BX pq voy a alterarlo para preguntar aquellos numeros q son >50
+MOV BX,DX
+CMP BYTE PTR [BX],51 
+;si el valor invertido 
+;es igual a 50 lo incluiría si hago cmp[bx],50 
+;el enunciado solicita mayores que 50 por eso elijo "51"
+;de quedar invertido un numero y de 51 el cmp [bx],51 no genera problema alguno porque lo incluiría
+JS skip
+ADD CL,[BX]
+skip: POP BX ;desapilo BX
+INC BX ;avanzo en la tabla de numeros
+INC DX ;avanzo en tabla de resultados
+DEC CH ;iteracion menos por hacer 
+JMP repetir
+
+fin: MOV BX,OFFSET Resultado
+MOV [BX],CL ;actualizo el contador en memoria
+HLT
+END
